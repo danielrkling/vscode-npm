@@ -1,0 +1,48 @@
+{
+  "name": "vscode-web-npm",
+  "displayName": "NPM - VS Code Web",
+  "description": "Download and install NPM packages in VS Code Web.",
+  "version": "0.1.0",
+  "publisher": "danielrkling",
+  "repository": "https://github.com/danielrkling/vscode-npm",
+  "engines": {
+    "vscode": "^1.51.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "browser": "./dist/extension.js",
+  "files": [
+    "dist/*",
+    "LICENSE"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-npm.install",
+        "title": "NPM - Install"
+      },
+      {
+        "command": "vscode-npm.install-package-json",
+        "title": "NPM - Install From Package.json"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "vscode-test-web --extensionDevelopmentPath=. .",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "@secretlint/node": "^10.1.1",
+    "@types/vscode": "^1.51.0",
+    "@vscode/test-web": "^0.0.71",
+    "@vscode/vsce": "^3.6.0",
+    "vite": "^7.0.2"
+  },
+  "dependencies": {
+    "nanotar": "^0.2.0",
+    "semver": "^7.7.2"
+  }
+}
