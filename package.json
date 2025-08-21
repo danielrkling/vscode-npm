@@ -2,7 +2,7 @@
   "name": "vscode-web-npm",
   "displayName": "NPM - VS Code Web",
   "description": "Download and install NPM packages in VS Code Web.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "danielrkling",
   "repository": "https://github.com/danielrkling/vscode-npm",
   "engines": {

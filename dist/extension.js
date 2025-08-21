@@ -1997,13 +1997,29 @@ const node_modules = vscode.Uri.joinPath(
   vscode.workspace.workspaceFolders[0].uri,
   "node_modules"
 );
+async function getWorkspacePackageJson() {
+  return JSON.parse(
+    await vscode.workspace.decode(
+      await vscode.workspace.fs.readFile(
+        vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, "package.json")
+      )
+    )
+  );
+}
 async function activate(context) {
   if (!initialized) {
     initialized = true;
     outputWindow = vscode.window.createOutputChannel("npm");
     outputWindow.show();
   }
-  vscode.commands.registerCommand("vscode-npm.install", async () => {
+  vscode.commands.registerCommand("vscode-npm.install-types", async () => {
+    const meta = await getWorkspacePackageJson();
+    for (const dep of Object.keys(meta.dependencies || {})) {
+      const depVersion = meta.dependencies[dep];
+      await installPackage(dep, depVersion, true, true);
+    }
+  });
+  vscode.commands.registerCommand("vscode-npm.install-single", async () => {
     const input = await vscode.window.showInputBox({
       prompt: "Enter the NPM package name to install"
     });
@@ -2012,19 +2028,13 @@ async function activate(context) {
       return;
     }
     const [packageName, version] = parseNpmPackage(input);
-    installPackage(packageName, version);
+    installPackage(packageName, version, false, false);
   });
-  vscode.commands.registerCommand("vscode-npm.install-package-json", async () => {
-    const meta = JSON.parse(
-      await vscode.workspace.decode(
-        await vscode.workspace.fs.readFile(
-          vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, "package.json")
-        )
-      )
-    );
+  vscode.commands.registerCommand("vscode-npm.install", async () => {
+    const meta = await getWorkspacePackageJson();
     for (const dep of Object.keys(meta.dependencies || {})) {
       const depVersion = meta.dependencies[dep];
-      await installPackage(dep, depVersion);
+      await installPackage(dep, depVersion, true, false);
     }
   });
 }
@@ -2043,7 +2053,7 @@ function parseNpmPackage(packageNameString) {
   return [fullPackageName, version];
 }
 const installedPackages = /* @__PURE__ */ new Set();
-async function installPackage(packageName, versionRange) {
+async function installPackage(packageName, versionRange, installDeps = true, typesOnly = false) {
   const meta = await fetch(`https://registry.npmjs.org/${packageName}`).then(
     (response) => response.json()
   );
@@ -2072,12 +2082,20 @@ async function installPackage(packageName, versionRange) {
     if (file.type === "directory") {
       await vscode.workspace.fs.createDirectory(uri);
     } else if (file.type === "file") {
-      await vscode.workspace.fs.writeFile(uri, file.data);
+      if (typesOnly) {
+        if (file.name.endsWith(".ts") || file.name.endsWith(".json")) {
+          await vscode.workspace.fs.writeFile(uri, file.data);
+        }
+      } else {
+        await vscode.workspace.fs.writeFile(uri, file.data);
+      }
     }
   }
-  for (const dep of Object.keys(meta.versions[version].dependencies || {})) {
-    const depVersion = meta.versions[version].dependencies[dep];
-    await installPackage(dep, depVersion);
+  if (installDeps) {
+    for (const dep of Object.keys(meta.versions[version].dependencies || {})) {
+      const depVersion = meta.versions[version].dependencies[dep];
+      await installPackage(dep, depVersion, installDeps, typesOnly);
+    }
   }
 }
 exports.activate = activate;

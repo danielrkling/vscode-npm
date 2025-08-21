@@ -40,7 +40,7 @@ export async function activate(context: ExtensionContext) {
 
     for (const dep of Object.keys(meta.dependencies || {})) {
       const depVersion = meta.dependencies[dep];
-      await installPackage(dep, depVersion, true, false); // Remove leading caret or tilde
+      await installPackage(dep, depVersion, true, true); // Remove leading caret or tilde
     }
   });
 
@@ -140,9 +140,14 @@ async function installPackage(
     if (file.type === "directory") {
       await workspace.fs.createDirectory(uri);
     } else if (file.type === "file") {
-      if (!typesOnly || file.name.endsWith(".ts") || file.name.endsWith(".json")) {
-        await workspace.fs.writeFile(uri, file.data!);
+      if (typesOnly){
+        if (file.name.endsWith(".ts") || file.name.endsWith(".json")) {
+          await workspace.fs.writeFile(uri, file.data!);
+        }
+      }else{
+          await workspace.fs.writeFile(uri, file.data!);
       }
+
     }
   }
   if (installDeps) {
