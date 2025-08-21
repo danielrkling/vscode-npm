@@ -25,8 +25,12 @@
         "title": "NPM - Install"
       },
       {
-        "command": "vscode-npm.install-package-json",
-        "title": "NPM - Install From Package.json"
+        "command": "vscode-npm.install-single",
+        "title": "NPM - Install Single Package"
+      },
+            {
+        "command": "vscode-npm.install-types",
+        "title": "NPM - Install Types"
       }
     ]
   },

@@ -18,6 +18,16 @@ const node_modules = Uri.joinPath(
   "node_modules"
 );
 
+async function getWorkspacePackageJson() {
+  return JSON.parse(
+      await workspace.decode(
+        await workspace.fs.readFile(
+          Uri.joinPath(workspace.workspaceFolders![0].uri, "package.json")
+        )
+      )
+    );
+}
+
 export async function activate(context: ExtensionContext) {
   if (!initialized) {
     initialized = true;
@@ -25,7 +35,16 @@ export async function activate(context: ExtensionContext) {
     outputWindow.show();
   }
 
-  commands.registerCommand("vscode-npm.install", async () => {
+  commands.registerCommand("vscode-npm.install-types", async () => {
+    const meta = await getWorkspacePackageJson()
+
+    for (const dep of Object.keys(meta.dependencies || {})) {
+      const depVersion = meta.dependencies[dep];
+      await installPackage(dep, depVersion, true, false); // Remove leading caret or tilde
+    }
+  });
+
+  commands.registerCommand("vscode-npm.install-single", async () => {
     const input = await window.showInputBox({
       prompt: "Enter the NPM package name to install",
     });
@@ -37,21 +56,15 @@ export async function activate(context: ExtensionContext) {
 
     const [packageName, version] = parseNpmPackage(input);
 
-    installPackage(packageName, version);
+    installPackage(packageName, version, false, false);
   });
 
-  commands.registerCommand("vscode-npm.install-package-json", async () => {
-    const meta = JSON.parse(
-      await workspace.decode(
-        await workspace.fs.readFile(
-          Uri.joinPath(workspace.workspaceFolders![0].uri, "package.json")
-        )
-      )
-    );
+  commands.registerCommand("vscode-npm.install", async () => {
+    const meta = await getWorkspacePackageJson()
 
     for (const dep of Object.keys(meta.dependencies || {})) {
       const depVersion = meta.dependencies[dep];
-      await installPackage(dep, depVersion); // Remove leading caret or tilde
+      await installPackage(dep, depVersion, true, false); // Remove leading caret or tilde
     }
   });
 }
@@ -86,7 +99,9 @@ const installedPackages: Set<string> = new Set();
 
 async function installPackage(
   packageName: string,
-  versionRange: string
+  versionRange: string,
+  installDeps = true,
+  typesOnly = false
 ): Promise<void> {
   const meta = await fetch(`https://registry.npmjs.org/${packageName}`).then(
     (response) => response.json()
@@ -125,12 +140,16 @@ async function installPackage(
     if (file.type === "directory") {
       await workspace.fs.createDirectory(uri);
     } else if (file.type === "file") {
-      await workspace.fs.writeFile(uri, file.data!);
+      if (!typesOnly || file.name.endsWith(".ts") || file.name.endsWith(".json")) {
+        await workspace.fs.writeFile(uri, file.data!);
+      }
+    }
+  }
+  if (installDeps) {
+    for (const dep of Object.keys(meta.versions[version].dependencies || {})) {
+      const depVersion = meta.versions[version].dependencies[dep];
+      await installPackage(dep, depVersion, installDeps, typesOnly); // Remove leading caret or tilde
     }
   }
 
-  for (const dep of Object.keys(meta.versions[version].dependencies || {})) {
-    const depVersion = meta.versions[version].dependencies[dep];
-    await installPackage(dep, depVersion); // Remove leading caret or tilde
-  }
 }
